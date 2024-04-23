@@ -723,6 +723,9 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
                     columnVirtualizer={columnVirtualizer}
                     uniqueId={uniqueId}
                     showVerticalEndBorder={showVerticalEndBorder}
+                    rows={rows}
+                    rowTextClass={clsx(classNames.tableText)}
+                    dispatch={dispatch}
                   />
                 )
               );

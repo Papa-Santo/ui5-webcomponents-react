@@ -17,6 +17,10 @@ interface ColumnHeaderContainerProps {
   columnVirtualizer: Virtualizer<DivWithCustomScrollProp, Element>;
   uniqueId: string;
   showVerticalEndBorder: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rows: Record<string, any>[];
+  rowTextClass: string;
+  dispatch: (e: { type: string; payload?: any }) => void;
 }
 
 export const ColumnHeaderContainer = forwardRef<HTMLDivElement, ColumnHeaderContainerProps>((props, ref) => {
@@ -30,10 +34,32 @@ export const ColumnHeaderContainer = forwardRef<HTMLDivElement, ColumnHeaderCont
     portalContainer,
     columnVirtualizer,
     uniqueId,
-    showVerticalEndBorder
+    showVerticalEndBorder,
+    rows,
+    rowTextClass,
+    dispatch
   } = props;
 
   useStylesheet(styleData, 'Resizer');
+
+  // Double click resizes column
+  const dubClickBehav = async (id: string) => {
+    let largest = 0;
+    for (let i = 0; i < rows.length; i++) {
+      // Use the classname for the span where the text lives AnalyticalTable.module.css.js
+      const collection = document.getElementsByClassName(rowTextClass);
+      const current = findWidth(rows[i].values[id], collection[0]);
+      largest = current > largest ? current : largest;
+    }
+    // Assign extra padding
+    largest += 20;
+    // Smallest column allowed is 60px
+    largest = largest < 60 ? 60 : largest;
+    dispatch({
+      type: "DOUBLE_CLICK_RESIZE",
+      payload: { [id]: largest },
+    });
+  };
 
   return (
     <div
@@ -67,6 +93,9 @@ export const ColumnHeaderContainer = forwardRef<HTMLDivElement, ColumnHeaderCont
                 data-resizer
                 className={classNames.resizer}
                 style={resizerDirectionStyle}
+                onDoubleClick={() => {
+                  dubClickBehav(rest);
+                }}
               />
             )}
             <ColumnHeader
@@ -94,3 +123,31 @@ export const ColumnHeaderContainer = forwardRef<HTMLDivElement, ColumnHeaderCont
 });
 
 ColumnHeaderContainer.displayName = 'ColumnHeaderContainer';
+
+// Text Width Analysis
+function getTextWidth(text: string, font: string) {
+  // Reusing the canvas is more efficient
+  const canvas =
+    getTextWidth.canvas ||
+    (getTextWidth.canvas = document.createElement("canvas"));
+  const context = canvas.getContext("2d");
+  context.font = font;
+  const metrics = context.measureText(text);
+  return metrics.width;
+}
+
+function getCssStyle(element: Element, prop: string) {
+  return window.getComputedStyle(element, null).getPropertyValue(prop);
+}
+
+function getCanvasFont(el: Element = document.body) {
+  const fontWeight = getCssStyle(el, "font-weight") || "normal";
+  const fontSize = getCssStyle(el, "font-size") || "12px";
+  const fontFamily = getCssStyle(el, "font-family") || "Times New Roman";
+
+  return `${fontWeight} ${fontSize} ${fontFamily}`;
+}
+
+const findWidth = (text: string, el: Element) => {
+  return getTextWidth(text, getCanvasFont(el));
+};
