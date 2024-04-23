@@ -149,6 +149,7 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
     onRowSelect,
     onSort,
     onTableScroll,
+    onAutoResize,
     LoadingComponent,
     NoDataComponent,
     additionalEmptyRowsCount = 0,
@@ -527,10 +528,15 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
     if (popInRowHeight !== internalRowHeight) {
       dispatch({
         type: 'TABLE_SCROLLING_ENABLED',
-        payload: { isScrollable: visibleRowCount * popInRowHeight > tableBodyHeight || rows.length > visibleRowCount }
+        payload: {
+          isScrollable: visibleRowCount * popInRowHeight > tableBodyHeight || rows.length > visibleRowCount
+        }
       });
     } else {
-      dispatch({ type: 'TABLE_SCROLLING_ENABLED', payload: { isScrollable: rows.length > visibleRowCount } });
+      dispatch({
+        type: 'TABLE_SCROLLING_ENABLED',
+        payload: { isScrollable: rows.length > visibleRowCount }
+      });
     }
   }, [rows.length, minRows, internalVisibleRowCount, popInRowHeight, tableBodyHeight]);
 
@@ -655,6 +661,110 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
     );
   };
 
+  const handleOnAutoResize = (e, accessor) => {
+    // Helpers
+    interface canvasHolderProps {
+      canvas?: HTMLCanvasElement;
+    }
+    const canvasHolder: canvasHolderProps = { canvas: undefined };
+    // Text Width Analysis
+    function getTextWidth(text: string, font: string) {
+      // Reusing the canvas is more efficient
+      const canvas = canvasHolder.canvas || (canvasHolder.canvas = document.createElement('canvas'));
+      const context = canvas.getContext('2d');
+      context.font = font;
+      const metrics = context.measureText(text);
+      return metrics.width;
+    }
+
+    function getCssStyle(element: Element, prop: string) {
+      return window.getComputedStyle(element, null).getPropertyValue(prop);
+    }
+
+    function getCanvasFont(el: Element = document.body) {
+      const fontWeight = getCssStyle(el, 'font-weight') || 'normal';
+      const fontSize = getCssStyle(el, 'font-size') || '12px';
+      const fontFamily = getCssStyle(el, 'font-family') || 'Times New Roman';
+
+      return `${fontWeight} ${fontSize} ${fontFamily}`;
+    }
+
+    const findWidth = (text: string, el: Element) => {
+      let font: string | undefined;
+      if (!font) font = getCanvasFont(el);
+      return getTextWidth(text, font);
+    };
+    // End Helpers
+    let largest = 0;
+    // Currently Including Overscan
+    const items = rowVirtualizer.getVirtualItems();
+    const [start, end] = [items[0].index, items[items.length - 1].index];
+
+    for (let i = start; i < end + 1; i++) {
+      // Use the classname for the span where the text lives AnalyticalTable.module.css.js
+      const collection = document.getElementsByClassName(clsx(classNames.tableText));
+      const current = findWidth(rows[i].values[accessor], collection[0]);
+      largest = current > largest ? current : largest;
+    }
+    // Assign padding
+    largest += 20;
+    // Smallest column allowed is 60px
+    largest = largest < 60 ? 60 : largest;
+    onAutoResize(
+      enrichEventWithDetails(e, {
+        accessor,
+        width: largest
+      })
+    );
+    if (e.defaultPrevented) {
+      return;
+    }
+    dispatch({
+      type: 'DOUBLE_CLICK_RESIZE',
+      payload: { [accessor]: largest }
+    });
+  };
+
+  const measureElement = (el: HTMLElement) => {
+    return el.offsetHeight;
+  };
+
+  const overscan = overscanCount ? overscanCount : Math.floor(visibleRows / 2);
+  const rHeight = popInRowHeight !== internalRowHeight ? popInRowHeight : internalRowHeight;
+
+  const itemCount =
+    Math.max(
+      minRows,
+      rows.length,
+      visibleRowCountMode === AnalyticalTableVisibleRowCountMode.AutoWithEmptyRows ? internalVisibleRowCount : 0
+    ) + (!tableState.isScrollable ? additionalEmptyRowsCount : 0);
+
+  const rowVirtualizer = useVirtualizer({
+    count: itemCount,
+    getScrollElement: () => parentRef.current,
+    estimateSize: useCallback(
+      (index) => {
+        if (
+          renderRowSubComponent &&
+          (rows[index]?.isExpanded || alwaysShowSubComponent) &&
+          tableState.subComponentsHeight?.[index]?.rowId === rows[index]?.id
+        ) {
+          return rHeight + (tableState.subComponentsHeight?.[index]?.subComponentHeight ?? 0);
+        }
+        return rHeight;
+      },
+      [rowHeight, rows, renderRowSubComponent, alwaysShowSubComponent, tableState.subComponentsHeight]
+    ),
+    overscan,
+    measureElement,
+    indexAttribute: 'data-virtual-row-index'
+  });
+  scrollToRef.current = {
+    ...scrollToRef.current,
+    scrollToOffset: rowVirtualizer.scrollToOffset,
+    scrollToIndex: rowVirtualizer.scrollToIndex
+  };
+
   return (
     <>
       <div
@@ -723,9 +833,7 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
                     columnVirtualizer={columnVirtualizer}
                     uniqueId={uniqueId}
                     showVerticalEndBorder={showVerticalEndBorder}
-                    rows={rows}
-                    rowTextClass={clsx(classNames.tableText)}
-                    dispatch={dispatch}
+                    onAutoResize={handleOnAutoResize}
                   />
                 )
               );
@@ -763,23 +871,10 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
                   classes={classNames}
                   prepareRow={prepareRow}
                   rows={rows}
-                  itemCount={
-                    Math.max(
-                      minRows,
-                      rows.length,
-                      visibleRowCountMode === AnalyticalTableVisibleRowCountMode.AutoWithEmptyRows
-                        ? internalVisibleRowCount
-                        : 0
-                    ) + (!tableState.isScrollable ? additionalEmptyRowsCount : 0)
-                  }
-                  scrollToRef={scrollToRef}
                   isTreeTable={isTreeTable}
                   internalRowHeight={internalRowHeight}
                   popInRowHeight={popInRowHeight}
-                  visibleRows={internalVisibleRowCount}
                   alternateRowColor={alternateRowColor}
-                  overscanCount={overscanCount}
-                  parentRef={parentRef}
                   visibleColumns={visibleColumns}
                   renderRowSubComponent={renderRowSubComponent}
                   alwaysShowSubComponent={alwaysShowSubComponent}
@@ -792,6 +887,7 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
                   subRowsKey={subRowsKey}
                   subComponentsBehavior={subComponentsBehavior}
                   triggerScroll={tableState.triggerScroll}
+                  rowVirtualizer={rowVirtualizer}
                 />
               </VirtualTableBodyContainer>
             )}
@@ -870,6 +966,7 @@ AnalyticalTable.defaultProps = {
   selectedRowIds: {},
   onGroup: () => {},
   onRowExpandChange: () => {},
+  onAutoResize: () => {},
   isTreeTable: false,
   alternateRowColor: false,
   overscanCountHorizontal: 5,
