@@ -753,17 +753,12 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
         }
         return rHeight;
       },
-      [rowHeight, rows, renderRowSubComponent, alwaysShowSubComponent, tableState.subComponentsHeight]
+      [rHeight, rows, renderRowSubComponent, alwaysShowSubComponent, tableState.subComponentsHeight]
     ),
     overscan,
     measureElement,
     indexAttribute: 'data-virtual-row-index'
   });
-  scrollToRef.current = {
-    ...scrollToRef.current,
-    scrollToOffset: rowVirtualizer.scrollToOffset,
-    scrollToIndex: rowVirtualizer.scrollToIndex
-  };
 
   return (
     <>
@@ -871,6 +866,7 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
                   classes={classNames}
                   prepareRow={prepareRow}
                   rows={rows}
+                  scrollToRef={scrollToRef}
                   isTreeTable={isTreeTable}
                   internalRowHeight={internalRowHeight}
                   popInRowHeight={popInRowHeight}

@@ -3,7 +3,12 @@ import { clsx } from 'clsx';
 import type { MutableRefObject, ReactNode } from 'react';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { AnalyticalTableSubComponentsBehavior } from '../../../enums/index.js';
-import type { AnalyticalTablePropTypes, DivWithCustomScrollProp, TriggerScrollState } from '../types/index.js';
+import type {
+  AnalyticalTablePropTypes,
+  DivWithCustomScrollProp,
+  TriggerScrollState,
+  ScrollToRefType
+} from '../types/index.js';
 import { getSubRowsByString } from '../util/index.js';
 import { EmptyRow } from './EmptyRow.js';
 import { RowSubComponent as SubComponent } from './RowSubComponent.js';
@@ -29,6 +34,7 @@ interface VirtualTableBodyProps {
   scrollContainerRef?: MutableRefObject<HTMLDivElement>;
   subComponentsBehavior: AnalyticalTablePropTypes['subComponentsBehavior'];
   triggerScroll?: TriggerScrollState;
+  scrollToRef: MutableRefObject<ScrollToRefType>;
   rowVirtualizer: Virtualizer<DivWithCustomScrollProp, HTMLElement>;
 }
 
@@ -53,12 +59,19 @@ export const VirtualTableBody = (props: VirtualTableBodyProps) => {
     subRowsKey,
     scrollContainerRef,
     subComponentsBehavior,
+    scrollToRef,
     triggerScroll,
     rowVirtualizer
   } = props;
 
   const rowHeight = popInRowHeight !== internalRowHeight ? popInRowHeight : internalRowHeight;
   const lastNonEmptyRow = useRef(null);
+
+  scrollToRef.current = {
+    ...scrollToRef.current,
+    scrollToOffset: rowVirtualizer.scrollToOffset,
+    scrollToIndex: rowVirtualizer.scrollToIndex
+  };
 
   useEffect(() => {
     if (triggerScroll && triggerScroll.direction === 'vertical') {
