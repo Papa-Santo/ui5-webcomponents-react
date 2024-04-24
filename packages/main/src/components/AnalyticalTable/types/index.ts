@@ -93,9 +93,6 @@ export interface AnalyticalTableState {
   interactiveRowsHavePopIn?: boolean;
   tableColResized?: true;
   triggerScroll?: TriggerScrollState;
-  //
-  columnDoubleClick?: boolean;
-  //
 }
 
 interface CellLabelParam {

@@ -700,14 +700,14 @@ const AnalyticalTable = forwardRef<AnalyticalTableDomRef, AnalyticalTablePropTyp
     const items = rowVirtualizer.getVirtualItems();
     const [start, end] = [items[0].index, items[items.length - 1].index];
 
-    for (let i = start; i < end + 1; i++) {
+    for (let i = start; i < end; i++) {
       // Use the classname for the span where the text lives AnalyticalTable.module.css.js
       const collection = document.getElementsByClassName(clsx(classNames.tableText));
       const current = findWidth(rows[i].values[accessor], collection[0]);
       largest = current > largest ? current : largest;
     }
     // Assign padding
-    largest += 20;
+    largest = Math.ceil(largest + 20);
     // Smallest column allowed is 60px
     largest = largest < 60 ? 60 : largest;
     onAutoResize(

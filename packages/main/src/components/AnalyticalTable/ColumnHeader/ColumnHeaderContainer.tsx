@@ -67,6 +67,7 @@ export const ColumnHeaderContainer = forwardRef<HTMLDivElement, ColumnHeaderCont
               <div
                 {...column.getResizerProps()}
                 data-resizer
+                data-cy={`data-resizer-${index}`}
                 className={classNames.resizer}
                 style={resizerDirectionStyle}
                 onDoubleClick={(e) => {

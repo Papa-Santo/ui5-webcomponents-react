@@ -32,7 +32,8 @@ const meta = {
       {
         Header: 'Name',
         headerTooltip: 'Full Name', // A more extensive description!
-        accessor: 'name' // String-based value accessors!
+        accessor: 'name', // String-based value accessors!
+        autoResizable: true // Double clicking the resize bar auto resizes the column!
       },
       {
         Header: 'Age',
@@ -41,16 +42,19 @@ const meta = {
         disableGroupBy: true,
         disableSortBy: false,
         disableFilters: false,
-        className: 'superCustomClass'
+        className: 'superCustomClass',
+        autoResizable: true
       },
       {
         Header: 'Friend Name',
-        accessor: 'friend.name'
+        accessor: 'friend.name',
+        autoResizable: true
       },
       {
         Header: () => <span>Friend Age</span>,
         headerLabel: 'Friend Age',
         accessor: 'friend.age',
+        autoResizable: true,
         hAlign: TextAlign.End,
         filter: (rows, accessor, filterValue) => {
           if (filterValue === 'all') {
